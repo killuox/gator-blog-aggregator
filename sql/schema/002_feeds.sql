@@ -6,7 +6,7 @@ CREATE TABLE feeds (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     name VARCHAR(255) NOT NULL UNIQUE,
     url VARCHAR(2048) NOT NULL UNIQUE,
-    user_id UUID REFERENCES users (id) ON DELETE CASCADE
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_feeds_user_id ON feeds (user_id);

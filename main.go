@@ -61,6 +61,7 @@ func main() {
 	commands.register("reset", handlerReset)
 	commands.register("users", handlerUsers)
 	commands.register("agg", handlerAgg)
+	commands.register("addfeed", handlerAddFeed)
 
 	if len(os.Args) < 2 {
 		fmt.Print("Not enough arguments provided.\n")
@@ -175,6 +176,38 @@ func handlerAgg(s *state, cmd command) error {
 	}
 
 	fmt.Print(res)
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	currUser, err := s.db.GetUserByName(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		fmt.Printf("You do not have the permission to add feed, please make sure to login or register before")
+		os.Exit(1)
+	}
+
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("A name is required\n")
+	}
+
+	if len(cmd.args) < 2 {
+		return fmt.Errorf("An url is required\n")
+	}
+
+	name := cmd.args[0]
+	url := cmd.args[1]
+
+	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      name,
+		Url:       url,
+		UserID:    currUser.ID,
+	})
+
+	fmt.Printf("%s\n", feed)
+
 	return nil
 }
 
