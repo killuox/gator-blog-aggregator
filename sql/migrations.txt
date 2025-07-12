@@ -1,0 +1,1 @@
+Up/down commands: goose postgres postgres://postgres:postgres@localhost:5432/gator?sslmode=disable up/down
