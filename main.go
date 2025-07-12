@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/killuox/gator-blog-aggregator/internal/config"
 	"github.com/killuox/gator-blog-aggregator/internal/database"
+	"github.com/killuox/gator-blog-aggregator/internal/rss"
 	_ "github.com/lib/pq"
 )
 
@@ -59,6 +60,7 @@ func main() {
 	commands.register("register", handlerRegister)
 	commands.register("reset", handlerReset)
 	commands.register("users", handlerUsers)
+	commands.register("agg", handlerAgg)
 
 	if len(os.Args) < 2 {
 		fmt.Print("Not enough arguments provided.\n")
@@ -160,6 +162,19 @@ func handlerUsers(s *state, cmd command) error {
 			fmt.Printf("* %s\n", u.Name)
 		}
 	}
+	return nil
+}
+
+func handlerAgg(s *state, cmd command) error {
+	url := "https://www.wagslane.dev/index.xml"
+
+	res, err := rss.FetchFeed(context.Background(), url)
+	if err != nil {
+		fmt.Printf("Error occured while fetching url: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Print(res)
 	return nil
 }
 
