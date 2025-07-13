@@ -183,8 +183,7 @@ func handlerAgg(s *state, cmd command) error {
 func handlerAddFeed(s *state, cmd command) error {
 	currUser, err := s.db.GetUserByName(context.Background(), s.config.CurrentUserName)
 	if err != nil {
-		fmt.Printf("You do not have the permission to add feed, please make sure to login or register before")
-		os.Exit(1)
+		return err
 	}
 
 	if len(cmd.args) < 1 {
