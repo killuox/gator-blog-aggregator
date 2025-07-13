@@ -63,6 +63,8 @@ func main() {
 	commands.register("agg", handlerAgg)
 	commands.register("addfeed", handlerAddFeed)
 	commands.register("feeds", handlerFeeds)
+	commands.register("follow", handlerFollow)
+	commands.register("following", handlerFollowing)
 
 	if len(os.Args) < 2 {
 		fmt.Print("Not enough arguments provided.\n")
@@ -101,7 +103,7 @@ func handlerLogin(s *state, cmd command) error {
 
 	user, err := s.db.GetUserByName(context.Background(), name)
 	if err != nil {
-		fmt.Printf("You can't login to an account that doesn't exist!")
+		fmt.Printf("You can't login to an account that doesn't exist!\n")
 		os.Exit(1)
 	}
 
@@ -205,6 +207,20 @@ func handlerAddFeed(s *state, cmd command) error {
 		Url:       url,
 		UserID:    currUser.ID,
 	})
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    currUser.ID,
+		FeedID:    feed.ID,
+	})
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("%s\n", feed)
 
@@ -220,6 +236,54 @@ func handlerFeeds(s *state, cmd command) error {
 
 	fmt.Printf("%s\n", feeds)
 
+	return nil
+}
+
+func handlerFollow(s *state, cmd command) error {
+	currUser, err := s.db.GetUserByName(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("A url is required\n")
+	}
+
+	url := cmd.args[0]
+	feed, err := s.db.GetFeedByUrl(context.Background(), url)
+	if err != nil {
+		return err
+	}
+
+	feedFollow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    currUser.ID,
+		FeedID:    feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s is now following %s feed\n", feedFollow.UserName, feedFollow.FeedName)
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command) error {
+	currUser, err := s.db.GetUserByName(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	feedFollows, err := s.db.GetFeedFollowsForUser(context.Background(), currUser.ID)
+	if err != nil {
+		return err
+	}
+
+	for _, feedFollow := range feedFollows {
+		fmt.Printf("- %s\n", feedFollow.FeedName)
+	}
 	return nil
 }
 
