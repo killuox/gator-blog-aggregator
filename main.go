@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -338,7 +339,30 @@ func scrapeFeeds(s *state) error {
 	}
 
 	for _, post := range res.Channel.Item {
-		fmt.Printf("- %s\n", post.Title)
+
+		pubDate, err := time.Parse(time.RFC1123, post.PubDate)
+		if err != nil {
+			fmt.Printf("Could not parse post %s pub date, skipping. Error: %v\n", post.Title, err) // <--- IMPROVE ERROR MESSAGE
+			continue
+		}
+		_, err = s.db.CreatePost(context.Background(), database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Title:       post.Title,
+			Url:         post.Link,
+			Description: post.Description,
+			PublishedAt: pubDate,
+			FeedID:      feed.ID,
+		})
+
+		if err != nil {
+			if strings.Contains(err.Error(), "posts_url_key") {
+				fmt.Printf("Skipping post '%s', already exists\n", post.Title)
+				continue // Skip to the next post in the loop
+			}
+			fmt.Printf("Could not create post %s:  %v\n", post.Title, err)
+		}
 	}
 
 	return nil
