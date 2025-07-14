@@ -1,0 +1,14 @@
+-- +goose Up
+CREATE TABLE posts (
+    id UUID PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    title VARCHAR(255) NOT NULL,
+    url VARCHAR(2048) NOT NULL UNIQUE,
+    description TEXT NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    feed_id UUID NOT NULL REFERENCES feeds (id) ON DELETE CASCADE
+);
+
+-- +goose Down
+DROP TABLE posts;
