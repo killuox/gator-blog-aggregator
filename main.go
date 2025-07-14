@@ -171,16 +171,21 @@ func handlerUsers(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	url := "https://www.wagslane.dev/index.xml"
-
-	res, err := rss.FetchFeed(context.Background(), url)
-	if err != nil {
-		fmt.Printf("Error occured while fetching url: %s\n", err)
-		os.Exit(1)
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("A time between request like (1s, 1m, 1h) is required\n")
 	}
+	time_between_reqs := cmd.args[0]
 
-	fmt.Print(res)
-	return nil
+	timeBetweenRequests, err := time.ParseDuration(time_between_reqs)
+	if err != nil {
+		return fmt.Errorf("Error parsing time duration\n")
+	}
+	fmt.Printf("Collecting feeds every %v\n", timeBetweenRequests)
+
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
+	}
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
@@ -219,7 +224,7 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 		return err
 	}
 
-	fmt.Printf("%s\n", feed)
+	fmt.Printf("%v\n", feed)
 
 	return nil
 }
@@ -307,8 +312,39 @@ func (c *commands) register(name string, f commandHandler) {
 	c.handlers[name] = f
 }
 
-// Middlewares
+func scrapeFeeds(s *state) error {
+	feed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return err
+	}
 
+	err = s.db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{
+		LastFetchedAt: time.Now(),
+		ID:            feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	feed, err = s.db.GetFeedByUrl(context.Background(), feed.Url)
+	if err != nil {
+		return err
+	}
+
+	res, err := rss.FetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		fmt.Printf("Error occured while fetching url: %s\n", err)
+		os.Exit(1)
+	}
+
+	for _, post := range res.Channel.Item {
+		fmt.Printf("- %s\n", post.Title)
+	}
+
+	return nil
+}
+
+// Middlewares
 func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
 	return func(s *state, cmd command) error {
 		currUser, err := s.db.GetUserByName(context.Background(), s.config.CurrentUserName)
