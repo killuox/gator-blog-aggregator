@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,6 +68,7 @@ func main() {
 	commands.register("follow", middlewareLoggedIn(handlerFollow))
 	commands.register("following", middlewareLoggedIn(handlerFollowing))
 	commands.register("unfollow", middlewareLoggedIn(handlerUnFollow))
+	commands.register("browse", middlewareLoggedIn(handlerBrowse))
 
 	if len(os.Args) < 2 {
 		fmt.Print("Not enough arguments provided.\n")
@@ -190,7 +192,6 @@ func handlerAgg(s *state, cmd command) error {
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
-
 	if len(cmd.args) < 1 {
 		return fmt.Errorf("A name is required\n")
 	}
@@ -300,6 +301,33 @@ func handlerUnFollow(s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	limit := int32(10)
+	if len(cmd.args) > 1 {
+		parsedInt64, err := strconv.ParseInt(cmd.args[0], 10, 32)
+		if err != nil {
+			return fmt.Errorf("Could not parse limit arguments")
+		}
+
+		num := int32(parsedInt64)
+		limit = num
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  limit,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, post := range posts {
+		fmt.Print(post)
+	}
+
+	return nil
+}
+
 // Utilities
 func (c *commands) run(s *state, cmd command) error {
 	handler, ok := c.handlers[cmd.name]
@@ -359,7 +387,7 @@ func scrapeFeeds(s *state) error {
 		if err != nil {
 			if strings.Contains(err.Error(), "posts_url_key") {
 				fmt.Printf("Skipping post '%s', already exists\n", post.Title)
-				continue // Skip to the next post in the loop
+				continue
 			}
 			fmt.Printf("Could not create post %s:  %v\n", post.Title, err)
 		}
